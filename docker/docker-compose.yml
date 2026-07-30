@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  global-state-manager:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: global-state-manager
+    ports:
+      - "8035:8035"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DATABASE=global_state
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - OTEL_ENABLED=true
+      - OTEL_ENDPOINT=http://jaeger:4318
+    depends_on:
+      - redis
+      - postgres
+      - rabbitmq
+      - jaeger
+    networks:
+      - gsm-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: gsm-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - gsm-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15.3-alpine
+    container_name: gsm-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=global_state
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - gsm-network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: gsm-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - gsm-network
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    container_name: gsm-jaeger
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - gsm-network
+    restart: unless-stopped
+
+networks:
+  gsm-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  postgres-data:
+  rabbitmq-data:
