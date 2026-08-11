@@ -11,16 +11,21 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/state", tags=["State Management"])
 
 
-def get_state_manager():
-    """Dependency for state manager."""
-    from ..state.state_manager import StateManager
-    from ..state.redis_store import RedisStateStore
-    from ..state.postgres_store import PostgresStateStore
-    from ..utils.config import settings
-    
-    redis_store = RedisStateStore()
-    postgres_store = PostgresStateStore()
-    return StateManager(redis_store, postgres_store)
+def get_state_manager() -> StateManager:
+    """Dependency for state manager.
+
+    Returns the app-level StateManager singleton that `startup_event` in
+    `app/main.py` already connected to Redis/PostgreSQL, instead of
+    constructing a fresh one here - a fresh StateManager's RedisStateStore/
+    PostgresStateStore have never had `.connect()` called on them, so every
+    real read/write through it would fail with an AttributeError on the
+    still-None `_client`/`_pool` the moment it touched Redis or Postgres.
+    """
+    from .. import main as app_main
+
+    if app_main.state_manager is None:
+        raise HTTPException(status_code=503, detail="State manager not initialized")
+    return app_main.state_manager
 
 
 def get_tracer():

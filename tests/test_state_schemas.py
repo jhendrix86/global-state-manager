@@ -32,7 +32,7 @@ class TestStateSchemas:
         
         assert state.engine_id == "engine-1"
         assert state.load == 0.5
-        assert version == 1
+        assert state.version == 1
     
     def test_funnel_state(self):
         state = FunnelState(
