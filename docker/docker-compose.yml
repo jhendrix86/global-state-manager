@@ -11,81 +11,22 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - REDIS_DB=11
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=postgres
       - POSTGRES_DATABASE=global_state
       - RABBITMQ_URL=amqp://rabbitmq:5672
       - OTEL_ENABLED=true
       - OTEL_ENDPOINT=http://jaeger:4318
-    depends_on:
-      - redis
-      - postgres
-      - rabbitmq
-      - jaeger
+    # No depends_on here - postgres/redis/rabbitmq/jaeger moved to shared
+    # infra (deploy/docker-compose.infra.yml), a different compose
+    # project. Bring that up first: deploy/03-build-and-up.sh infra-up
     networks:
-      - gsm-network
-    restart: unless-stopped
-
-  redis:
-    image: redis:7.2-alpine
-    container_name: gsm-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - gsm-network
-    restart: unless-stopped
-
-  postgres:
-    image: postgres:15.3-alpine
-    container_name: gsm-postgres
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=global_state
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    networks:
-      - gsm-network
-    restart: unless-stopped
-
-  rabbitmq:
-    image: rabbitmq:3.12-management
-    container_name: gsm-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    networks:
-      - gsm-network
-    restart: unless-stopped
-
-  jaeger:
-    image: jaegertracing/all-in-one:1.50
-    container_name: gsm-jaeger
-    ports:
-      - "16686:16686"
-      - "4318:4318"
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
-    networks:
-      - gsm-network
+      - os42-shared
     restart: unless-stopped
 
 networks:
-  gsm-network:
-    driver: bridge
-
-volumes:
-  redis-data:
-  postgres-data:
-  rabbitmq-data:
+  os42-shared:
+    external: true
