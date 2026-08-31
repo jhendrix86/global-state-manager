@@ -39,7 +39,7 @@ class StateManager:
         if pg_data:
             state = GlobalState(**pg_data["state_data"])
             # Cache in Redis
-            await self.redis.set_state("global", None, state.dict())
+            await self.redis.set_state("global", None, state.model_dump(mode="json"))
             return state
         
         return None
@@ -57,7 +57,7 @@ class StateManager:
         if not current:
             current = GlobalState()
         
-        previous_state = current.dict()
+        previous_state = current.model_dump(mode="json")
         
         # Apply updates
         for key, value in updates.items():
@@ -68,10 +68,10 @@ class StateManager:
         current.version += 1
         
         # Save to Redis
-        await self.redis.set_state("global", None, current.dict())
+        await self.redis.set_state("global", None, current.model_dump(mode="json"))
         
         # Save to PostgreSQL
-        await self.postgres.save_state("global", "global", current.dict(), current.version)
+        await self.postgres.save_state("global", "global", current.model_dump(mode="json"), current.version)
         
         # Create transition record
         transition = StateTransition(
@@ -80,8 +80,8 @@ class StateManager:
             entity_id="global",
             transition_type=TransitionType.UPDATE,
             previous_state=previous_state,
-            new_state=current.dict(),
-            diff=self._compute_diff(previous_state, current.dict()),
+            new_state=current.model_dump(mode="json"),
+            diff=self._compute_diff(previous_state, current.model_dump(mode="json")),
             version_before=current.version - 1,
             version_after=current.version,
             trace_id=trace_id,
@@ -90,7 +90,7 @@ class StateManager:
             triggered_by=triggered_by
         )
         
-        await self.postgres.save_transition(transition.dict())
+        await self.postgres.save_transition(transition.model_dump(mode="json"))
         
         return transition
     
@@ -103,7 +103,7 @@ class StateManager:
         pg_data = await self.postgres.get_state("engine", engine_id)
         if pg_data:
             state = EngineState(**pg_data["state_data"])
-            await self.redis.set_state("engine", engine_id, state.dict())
+            await self.redis.set_state("engine", engine_id, state.model_dump(mode="json"))
             return state
         
         return None
@@ -122,7 +122,7 @@ class StateManager:
         if not current:
             current = EngineState(engine_id=engine_id, engine_type=updates.get("engine_type", "unknown"))
         
-        previous_state = current.dict()
+        previous_state = current.model_dump(mode="json")
         
         for key, value in updates.items():
             if hasattr(current, key):
@@ -131,8 +131,8 @@ class StateManager:
         current.last_updated = datetime.utcnow()
         current.version += 1
         
-        await self.redis.set_state("engine", engine_id, current.dict())
-        await self.postgres.save_state("engine", engine_id, current.dict(), current.version)
+        await self.redis.set_state("engine", engine_id, current.model_dump(mode="json"))
+        await self.postgres.save_state("engine", engine_id, current.model_dump(mode="json"), current.version)
         
         transition = StateTransition(
             transition_id=str(uuid.uuid4()),
@@ -140,8 +140,8 @@ class StateManager:
             entity_id=engine_id,
             transition_type=TransitionType.UPDATE,
             previous_state=previous_state,
-            new_state=current.dict(),
-            diff=self._compute_diff(previous_state, current.dict()),
+            new_state=current.model_dump(mode="json"),
+            diff=self._compute_diff(previous_state, current.model_dump(mode="json")),
             version_before=current.version - 1,
             version_after=current.version,
             trace_id=trace_id,
@@ -150,7 +150,7 @@ class StateManager:
             triggered_by=triggered_by
         )
         
-        await self.postgres.save_transition(transition.dict())
+        await self.postgres.save_transition(transition.model_dump(mode="json"))
         
         return transition
     
@@ -163,7 +163,7 @@ class StateManager:
         pg_data = await self.postgres.get_state("funnel", funnel_id)
         if pg_data:
             state = FunnelState(**pg_data["state_data"])
-            await self.redis.set_state("funnel", funnel_id, state.dict())
+            await self.redis.set_state("funnel", funnel_id, state.model_dump(mode="json"))
             return state
         
         return None
@@ -182,7 +182,7 @@ class StateManager:
         if not current:
             current = FunnelState(funnel_id=funnel_id)
         
-        previous_state = current.dict()
+        previous_state = current.model_dump(mode="json")
         
         for key, value in updates.items():
             if hasattr(current, key):
@@ -191,8 +191,8 @@ class StateManager:
         current.last_updated = datetime.utcnow()
         current.version += 1
         
-        await self.redis.set_state("funnel", funnel_id, current.dict())
-        await self.postgres.save_state("funnel", funnel_id, current.dict(), current.version)
+        await self.redis.set_state("funnel", funnel_id, current.model_dump(mode="json"))
+        await self.postgres.save_state("funnel", funnel_id, current.model_dump(mode="json"), current.version)
         
         transition = StateTransition(
             transition_id=str(uuid.uuid4()),
@@ -200,8 +200,8 @@ class StateManager:
             entity_id=funnel_id,
             transition_type=TransitionType.UPDATE,
             previous_state=previous_state,
-            new_state=current.dict(),
-            diff=self._compute_diff(previous_state, current.dict()),
+            new_state=current.model_dump(mode="json"),
+            diff=self._compute_diff(previous_state, current.model_dump(mode="json")),
             version_before=current.version - 1,
             version_after=current.version,
             trace_id=trace_id,
@@ -210,7 +210,7 @@ class StateManager:
             triggered_by=triggered_by
         )
         
-        await self.postgres.save_transition(transition.dict())
+        await self.postgres.save_transition(transition.model_dump(mode="json"))
         
         return transition
     
@@ -220,7 +220,7 @@ class StateManager:
         timestamp = datetime.utcnow()
         
         # Get all states
-        global_state = (await self.get_global_state()).dict() if await self.get_global_state() else {}
+        global_state = (await self.get_global_state()).model_dump(mode="json") if await self.get_global_state() else {}
         engine_states = await self.redis.get_all_states("engine")
         funnel_states = await self.redis.get_all_states("funnel")
         product_states = await self.redis.get_all_states("product")

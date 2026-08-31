@@ -57,7 +57,10 @@ class FailureConsumer(BaseConsumer):
             "failure_id": failure_id,
             "type": payload.get("failure_type"),
             "severity": payload.get("severity"),
-            "affected_entities": payload.get("affected_entities", []),
+            # Real FailureDetected schema field is affected_operations, not
+            # affected_entities - this always read as [] regardless of what
+            # the publisher actually sent.
+            "affected_entities": payload.get("affected_operations", []),
             "detected_at": payload.get("detected_at")
         }
         

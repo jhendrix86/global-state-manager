@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
@@ -24,6 +24,14 @@ class LifecycleStage(str, Enum):
 
 class GlobalState(BaseModel):
     """Global system state."""
+    # StateManager.update_global_state() does a blind setattr(current, key,
+    # value) loop from a raw updates dict (e.g. {"system_status": "degraded"})
+    # - without this, pydantic doesn't validate/coerce on assignment, so
+    # system_status silently ends up holding a plain str instead of a real
+    # SystemStatus member (caught live: a PydanticSerializationUnexpectedValue
+    # warning on every such update).
+    model_config = ConfigDict(validate_assignment=True)
+
     system_status: SystemStatus = Field(default=SystemStatus.HEALTHY)
     active_engines: List[str] = Field(default_factory=list)
     active_funnels: List[str] = Field(default_factory=list)
@@ -41,6 +49,10 @@ class GlobalState(BaseModel):
 
 class EngineState(BaseModel):
     """Engine state."""
+    # Same reason as GlobalState.model_config - update_engine_state() also
+    # does a blind setattr loop.
+    model_config = ConfigDict(validate_assignment=True)
+
     engine_id: str
     engine_type: str
     health: str = Field(default="healthy")
@@ -59,6 +71,10 @@ class EngineState(BaseModel):
 
 class FunnelState(BaseModel):
     """Funnel state."""
+    # Same reason as GlobalState.model_config - update_funnel_state() also
+    # does a blind setattr loop.
+    model_config = ConfigDict(validate_assignment=True)
+
     funnel_id: str
     lifecycle_stage: LifecycleStage = Field(default=LifecycleStage.INITIALIZING)
     metrics: Dict[str, Any] = Field(default_factory=dict)
