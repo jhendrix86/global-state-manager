@@ -1,4 +1,5 @@
 import asyncio
+import os
 from typing import List, Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,13 +33,20 @@ structlog.configure(
 
 logger = structlog.get_logger()
 
+# SECURITY_REVIEW.md finding: /docs, /redoc, /openapi.json were reachable
+# unauthenticated on every engine (dynamic-pentest-confirmed) - disabled
+# unless DEBUG=true. No Settings.debug field here, so this checks the env
+# var directly rather than adding one just for this.
+_debug = os.getenv("DEBUG", "false").lower() == "true"
+
 # Create FastAPI app
 app = FastAPI(
     title="Global State Manager",
     description="Central nervous system of the Autonomous Company OS - tracks global system state, engine state, resource usage, funnel/product lifecycle, autonomous tasks, governance decisions, failures/recovery, and market/strategy state",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
+    docs_url="/docs" if _debug else None,
+    redoc_url="/redoc" if _debug else None,
+    openapi_url="/openapi.json" if _debug else None,
 )
 
 # Add CORS middleware
